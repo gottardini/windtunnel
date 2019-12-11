@@ -6,18 +6,16 @@ class Plotter:
     def __init__(self):
         pass
 
-    def plot(self,xax,yax,titles,ylim=(-3,3)):
-        fig, axes = plt.subplots(2,3)
-        for i in range(len(yax)):
-            axes[int(i/3),i%3 ].plot(xax,yax[i])
-            ''' crea un vettore che contiene una forza
-                o un momento per ogni acquisizione:
-                con x[i] for x in matr prende
-                l'iesimo elemento di ogni array x in
-                matr (che è un array di array):
-                primo array->i-esimo elemento
-                secondo array->i-esimo elemento
-                ...'''
-
-            axes[int(i/3),i%3].set(title=titles[i])
-            axes[int(i/3),i%3].set_ylim(ylim[0],ylim[1])
+    def plot(self,xax,ydata,labels,figtitle,ylim=(-6,6),xlabel="",ylabel="",scatter=False):
+        fig, ax = plt.subplots()
+        #print("aa",len(ydata[0]))
+        for i in range(len(ydata)):
+            if scatter:
+                ax.scatter(xax,ydata[i],label=labels[i])
+            else:
+                ax.plot(xax,ydata[i],label=labels[i])
+        ax.legend()
+        ax.set(title=figtitle)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.set_ylim(ylim[0],ylim[1])
