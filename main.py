@@ -3,10 +3,15 @@ import numpy as np
 import plotter
 import filter
 import parser
-from funcs import ptov
+from funcs import ptov,coeff
 import scipy.fftpack
 
-mode=7
+areas={"a":0.01656,"b":0.01718,"c":0.01718,"d":0.02399}
+setup_names={"a":"Vanilla","b":"Spoiler","c":"Spoiler + gurney flaps","d":"Spoiler + gurney flaps + wings"}
+
+mode=1
+if len(sys.argv)==2:
+    mode=int(sys.argv[1])
 
 if mode==0:
     compdata={"SaH0Pd":"Vanilla",
@@ -16,40 +21,40 @@ elif mode==1:
     compdata={"SbH0Pd":"Rear spoiler",
              "SbH0Pd1":"Rear spoiler - biased",}
 elif mode==2:
-    compdata={"SaH0Pa":"15 km/h",
-             "SaH0Pb":"40 km/h",
-             "SaH0Pc":"54 km/h",
-             "SaH0Pd":"74 km/h"}
+    compdata={"SaH0Pa":"V1",
+             "SaH0Pb":"V2",
+             "SaH0Pc":"V3",
+             "SaH0Pd":"V4"}
     pdata={"SaH0Pa":11,
            "SaH0Pb":73,
            "SaH0Pc":142,
            "SaH0Pd":260}
     vdata={key:ptov(px) for key,px in pdata.items()}
 elif mode==3:
-    compdata={"SbH0Pa":"15 km/h",
-             "SbH0Pb":"40 km/h",
-             "SbH0Pc":"54 km/h",
-             "SbH0Pd":"74 km/h"}
+    compdata={"SbH0Pa":"V1",
+             "SbH0Pb":"V2",
+             "SbH0Pc":"V3",
+             "SbH0Pd":"V4"}
     pdata={"SbH0Pa":11,
            "SbH0Pb":73,
            "SbH0Pc":142,
            "SbH0Pd":254}
     vdata={key:ptov(px) for key,px in pdata.items()}
 elif mode==4:
-    compdata={"ScH0Pa":"15 km/h",
-             "ScH0Pb":"40 km/h",
-             "ScH0Pc":"54 km/h",
-             "ScH0Pd":"74 km/h"}
+    compdata={"ScH0Pa":"V1",
+             "ScH0Pb":"V2",
+             "ScH0Pc":"V3",
+             "ScH0Pd":"V4"}
     pdata={"ScH0Pa":11,
            "ScH0Pb":70,
            "ScH0Pc":136,
            "ScH0Pd":239}
     vdata={key:ptov(px) for key,px in pdata.items()}
 elif mode==5:
-    compdata={"SdH0Pa":"15 km/h",
-             "SdH0Pb":"40 km/h",
-             "SdH0Pc":"54 km/h",
-             "SdH0Pd":"74 km/h"}
+    compdata={"SdH0Pa":"V1",
+             "SdH0Pb":"V2",
+             "SdH0Pc":"V3",
+             "SdH0Pd":"V4"}
     pdata={"SdH0Pa":11,
            "SdH0Pb":68,
            "SdH0Pc":127,
@@ -77,6 +82,7 @@ elif mode==7:
 
 compvals=["Fy","Fz"]
 compvaldesc={"Fy":"Drag","Fz":"Lift"}
+coeffdesc={"Fy":"Cd","Fz":"Cl"}
 
 trange=[5,10]
 freq=125
@@ -109,68 +115,30 @@ if __name__=="__main__":
         #print(len(yData))
         win.plot(xax=np.divide(t,125),ydata=yData,labels=yLabels,figtitle=compvaldesc[compval],ylim=[-15,5],xlabel="Time [s]",ylabel="Force [N]")
 
-    if mode>=2 and False:
+    if mode>1 and mode <6:
         ###FIND AVERAGE VALUES
         avgdata={}
         vels={}
+        coeffs={}
         for key,val in filtered_data.items():
             avgdata[key]={compval:np.average(val[compval]) for compval in compvals}
 
         for compval in compvals:
             vels[compval]=[]
+            coeffs[coeffdesc[compval]]=[]
             for key,val in avgdata.items():
                 vels[compval].append((vdata[key],avgdata[key][compval]))
+                coeffs[coeffdesc[compval]].append((vdata[key],coeff(avgdata[key][compval]*(-1 if compval=="Fy" else 1),areas[key[1]],pdata[key])))
             win=plotter.Plotter()
+            #win.plot(xax=[tup[0]*3.6 for tup in vels[compval]],ydata=[[tup[1] for tup in vels[compval]]],labels=[compvaldesc[compval]],figtitle="",ylim=[0,4],xlabel="Velocity [km/h]",ylabel="Force [N]", scatter=True)
+            win.plot(xax=[tup[0]*3.6 for tup in vels[compval]],ydata=[[tup[1] for tup in coeffs[coeffdesc[compval]]]],labels=[coeffdesc[compval]],figtitle=setup_names[key[1]]+" setup",ylim=[-5,5],xlabel="Velocity [km/h]",ylabel="", scatter=True)
 
-            win.plot(xax=[tup[0]*3.6 for tup in vels[compval]],ydata=[[tup[1] for tup in vels[compval]]],labels=[compvaldesc[compval]],figtitle="",ylim=[0,4],xlabel="Velocity [km/h]",ylabel="Force [N]", scatter=True)
         print(vels)
+        print(coeffs)
+        print("\n\n")
+
         #print(avgdata)
 
 
 
     plotter.plt.show()
-    """
-    #print(sys.argv)
-    if len(sys.argv) == 2:
-        data=parser.parse(sys.argv[1],["Fy","Fz"])
-        fourier_data=data.copy()
-        filtered_data=data.copy()
-        fourier_filtered_data=data.copy()
-        t = np.arange(0, data["length"])
-
-        #Prima finestra
-        raw=plotter.Plotter()
-        raw.plot(xax=t,ydata=[data["Fy"],],figtitle="Raw Drag",ylim=[-10,10])
-
-
-        #Terza finestra
-        raw_fourier=plotter.Plotter()
-        # Number of samplepoints
-        N = data["length"]
-        # sample spacing
-        T = 1 / 125
-        fourier_t = np.linspace(0.0, 1.0 / (2.0 * T), N / 2)
-        fourier_data["Fy"] = scipy.fftpack.fft(data["Fy"])
-        fourier_data["Fy"] = 2.0 / N * np.abs(fourier_data["Fy"][:N // 2])
-        raw_fourier.plot(xax=fourier_t,ydata=[fourier_data["Fy"],],figtitle="Fourier Drag",ylim=[-2,2])
-
-
-        #Seconda Finestra
-        filtered=plotter.Plotter()
-        filtered_data["Fy"]=filter.filter_binding(data["Fy"],(1,125,2))
-        filtered.plot(xax=t,ydata=[filtered_data["Fy"],],figtitle="Filtered Drag",ylim=[-10,10])
-
-        filtered_fourier=plotter.Plotter()
-        # Number of samplepoints
-        N = data["length"]
-        # sample spacing
-        T = 1 / 125
-        fourier_t = np.linspace(0.0, 1.0 / (2.0 * T), N / 2)
-        fourier_filtered_data["Fy"] = scipy.fftpack.fft(filtered_data["Fy"])
-        fourier_filtered_data["Fy"] = 2.0 / N * np.abs(fourier_filtered_data["Fy"][:N // 2])
-        filtered_fourier.plot(xax=fourier_t,ydata=[fourier_filtered_data["Fy"],],figtitle="Filtered Fourier Drag",ylim=[-2,2])
-        plotter.plt.show()
-
-    else:
-        raise ValueError("Specifica il nome del file")
-    """
